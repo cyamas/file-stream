@@ -11,21 +11,16 @@ import (
 	"time"
 )
 
-type FileServer struct{}
-
-func (fs *FileServer) readLoop(conn net.Conn) {
-	buf := new(bytes.Buffer)
-	var size int64
-	binary.Read(conn, binary.LittleEndian, &size)
-	for {
-		n, err := io.CopyN(buf, conn, size)
-		if err != nil {
-			log.Fatal(err)
-		}
-		fmt.Println(buf.Bytes())
-		fmt.Printf("received %d bytes over the network/n", n)
-	}
+func main() {
+	go func() {
+		time.Sleep(2 * time.Second)
+		sendFile(20000000)
+	}()
+	server := &FileServer{}
+	server.start()
 }
+
+type FileServer struct{}
 
 func (fs *FileServer) start() {
 	ln, err := net.Listen("tcp", ":3000")
@@ -41,13 +36,28 @@ func (fs *FileServer) start() {
 	}
 }
 
-func main() {
-	go func() {
-		time.Sleep(2 * time.Second)
-		sendFile(20000000)
-	}()
-	server := &FileServer{}
-	server.start()
+func (fs *FileServer) readLoop(conn net.Conn) {
+	// buf is a bytes Buffer struct
+	buf := new(bytes.Buffer)
+	var size int64
+	// binary.Read reads in structured binary from conn into &size
+	// which is a fixed-size int64
+	// LittleEndian is a byte ordering system where the least-significant
+	// byte is stored at the smallest address.
+	binary.Read(conn, binary.LittleEndian, &size)
+	for {
+		// CopyN copies n (size) number of bytes from buf to conn
+		// or until it encounters an error and essentially returns
+		// the number of bytes that were copied
+		n, err := io.CopyN(buf, conn, size)
+		if err != nil {
+			log.Fatal(err)
+		}
+		// buf.Bytes() returns the bytes in the buf struct
+		fmt.Println(buf.Bytes())
+		// n is the number of bytes that were copied by CopyN
+		fmt.Printf("received %d bytes over the network/n", n)
+	}
 }
 
 func sendFile(size int) error {
